@@ -1,5 +1,7 @@
 package com.example.hw2;
 
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -30,10 +32,44 @@ import retrofit2.Retrofit;
 public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
     private User CurrentUser;
+    static final String TAG = "MainActivity";
     private UserDatabase db;
+
+    Context context;
+    private void setButtons(boolean enabled){
+        binding.buttonNextUser.setEnabled(enabled);
+        binding.buttonAddUserToCollection.setEnabled(enabled);
+        binding.buttonViewCollection.setEnabled(enabled);
+    }
+    View.OnClickListener buttonNextUserClickListener = view -> {
+        setButtons(false);
+        MakeRequest();
+    };
+    View.OnClickListener buttonViewCollectionClickListener = view -> {
+    Intent intent = new Intent(context,UsersActivity.class);
+    startActivity(intent);
+    };
+    View.OnClickListener ButtonAddUserToCollectionClickListener = view -> {
+        if (CurrentUser == null) {
+            
+            
+            return;
+        }
+       
+        List<User> users = db.userDao().getUsers(CurrentUser.firstName, CurrentUser.lastName, CurrentUser.city, CurrentUser.country, CurrentUser.imageURL);
+
+
+    if(users.isEmpty()){
+        db.userDao().insertUser(CurrentUser);
+    }
+
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        context = this;
+        db = UserDatabase.getInstance(context);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         EdgeToEdge.enable(this);
         setContentView(binding.getRoot());
@@ -43,22 +79,21 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-        binding.button2.setOnClickListener(onClickListener);
+        binding.buttonAddUserToCollection.setOnClickListener(ButtonAddUserToCollectionClickListener);
+        binding.buttonViewCollection.setOnClickListener(buttonViewCollectionClickListener);
+        binding.buttonNextUser.setOnClickListener(buttonNextUserClickListener);
 
     }
-    View.OnClickListener onClickListener = view -> {
-       //  List<User> users = db.userDao().getUsers();
-    };
-    public void onNextUserButtonClick(View view) {
 
-        MakeRequest();
-    }
+
 
     @Override
     protected void onResume() {
         super.onResume();
+        setButtons(false);
         MakeRequest();
     }
+
 
     private void MakeRequest() {
         Retrofit retrofit = UserAPIClient.getClient();
@@ -96,16 +131,20 @@ public class MainActivity extends AppCompatActivity {
                     CurrentUser.imageURL = result.picture.large;
 
 
+
+
                 } else {
                     Toast.makeText(MainActivity.this, "Failed to fetch user data", Toast.LENGTH_SHORT).show();
                     CurrentUser = null;
                 }
+                setButtons(true);
             }
 
             @Override
             public void onFailure(Call<Root> call, Throwable throwable) {
                 Toast.makeText(MainActivity.this, "Failed to make request", Toast.LENGTH_SHORT).show();
                 CurrentUser = null;
+                setButtons(true);
             }
         });
     }
